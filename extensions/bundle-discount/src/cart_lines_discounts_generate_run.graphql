@@ -1,0 +1,36 @@
+query CartInput {
+  cart {
+    lines {
+      id
+      quantity
+      attribute(key: "_quantity_break") {
+        value
+      }
+
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+
+          product {
+            id
+
+            metafield(namespace: "bundle", key: "config") {
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+
+  shop {
+    metafield(namespace: "bundle", key: "global_config") {
+      value
+    }
+  }
+
+  discount {
+    discountClasses
+  }
+}

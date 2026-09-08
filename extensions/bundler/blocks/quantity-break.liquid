@@ -1,0 +1,201 @@
+{% assign bundle = product.metafields.bundle.config.value %}
+{% assign global_bundle = shop.metafields.bundle.global_config.value %}
+
+{% if bundle != blank %}
+  {% if bundle.status != 'Paused' and bundle.breaks.size > 0 %}
+    {% assign config = bundle %}
+  {% endif %}
+{% elsif global_bundle != blank and global_bundle.status != 'Paused' and global_bundle.breaks.size > 0 %}
+  {% assign config = global_bundle %}
+{% endif %}
+
+{% if config != blank %}
+
+<div class="quantity-break-widget">
+
+  <div class="qb-title">
+    {{ config.title }}
+  </div>
+
+  {% for item in config.breaks %}
+
+    {% assign original_price = product.price | times: item.quantity %}
+    {% assign discount_amount = original_price | times: item.value | divided_by: 100 %}
+    {% assign discounted_price = original_price | minus: discount_amount %}
+
+    <label class="qb-item">
+
+      <input
+        type="radio"
+        name="quantity-break"
+        value="{{ item.quantity }}"
+        data-discount="{{ item.value }}"
+        {% if forloop.first %}
+          checked
+        {% endif %}
+      >
+
+      <div class="qb-left">
+
+        {% assign description = item.description %}
+        {% assign description = description | replace: '{{quantity}}', item.quantity %}
+        {% assign description = description | replace: '{{discount_value}}', item.value %}
+        {% assign description = description | replace: '{{discount_unit}}', '%' %}
+        
+        <div class="qb-description">
+          {{ description }}
+        </div>
+
+        {% if item.value > 0 %}
+            {% assign savings_text = item.savingsText %}
+            {% assign savings_text = savings_text | replace: '{{quantity}}', item.quantity %}
+            {% assign savings_text = savings_text | replace: '{{discount_value}}', item.value %}
+            {% assign savings_text = savings_text | replace: '{{discount_unit}}', '%' %}
+            <div class="qb-savings">
+                {{ savings_text }}
+            </div>
+        {% endif %}
+
+      </div>
+
+      <div class="qb-right">
+
+        <div class="qb-price">
+          {{ discounted_price | money }}
+        </div>
+
+        {% if item.value > 0 %}
+          <div class="qb-original-price">
+            {{ original_price | money }}
+          </div>
+        {% endif %}
+
+      </div>
+
+    </label>
+
+  {% endfor %}
+
+</div>
+
+<style>
+.quantity-break-widget {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.qb-title {
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.qb-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.qb-left {
+  flex: 1;
+  margin-left: 12px;
+}
+
+.qb-description {
+  font-weight: 600;
+}
+
+.qb-savings {
+  color: green;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.qb-right {
+  text-align: right;
+}
+
+.qb-original-price {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 12px;
+}
+</style>
+
+<script>
+  (function () {
+    var PROPERTY_NAME = "properties[_quantity_break]";
+
+    function getProductForm() {
+      return (
+        document.querySelector("product-form form") ||
+        document.querySelector('form[action*="/cart/add"]') ||
+        document.querySelector('form[data-type="add-to-cart-form"]')
+      );
+    }
+
+    function getOrCreateInput(form, name) {
+      var input = form.querySelector('input[name="' + name + '"]');
+      if (!input) {
+        input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        form.appendChild(input);
+      }
+      return input;
+    }
+
+    function getSelectedQuantity() {
+      var checked = document.querySelector(
+        'input[name="quantity-break"]:checked'
+      );
+      return checked ? parseInt(checked.value, 10) : 1;
+    }
+
+    function setFormQuantity() {
+      var form = getProductForm();
+      if (!form) return;
+
+      var quantity = String(getSelectedQuantity());
+      var quantityInput = getOrCreateInput(form, "quantity");
+      quantityInput.value = quantity;
+      quantityInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+      getOrCreateInput(form, PROPERTY_NAME).value = quantity;
+    }
+
+    document.addEventListener("change", function (e) {
+      if (e.target.name !== "quantity-break") return;
+      setFormQuantity();
+    });
+
+    document.addEventListener(
+      "submit",
+      function (e) {
+        var form = getProductForm();
+        if (!form || e.target !== form) return;
+        setFormQuantity();
+      },
+      true
+    );
+
+    setFormQuantity();
+  })();
+</script>
+
+{% endif %}
+
+{% schema %}
+{
+  "name": "Quantity Break Widget",
+  "target": "section",
+  "templates": ["product"]
+}
+{% endschema %}
